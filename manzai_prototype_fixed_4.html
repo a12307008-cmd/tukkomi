@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI漫才構造診断ゲーム - ダウンタウン「誘拐」修復版</title>
+    <style>
+        /* 漫画・アメコミ風ポップデザイン CSS */
+        @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@800;900&display=swap');
+
+        * {
+            box-sizing: border-box;
+            font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+            font-weight: 900; /* 全てゴシック体・太字 */
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #3a86ff; 
+            background-image: radial-gradient(#000000 15%, transparent 15%);
+            background-size: 20px 20px;
+            color: #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 950px;
+            background: #ffffff;
+            border: 6px solid #000000;
+            box-shadow: 14px 12px 0px #000000;
+            position: relative;
+            padding: 25px;
+        }
+
+        h1 {
+            text-align: center;
+            border: 5px solid #000;
+            box-shadow: 6px 6px 0px #000;
+            padding: 15px;
+            margin-top: 0;
+            background: #ff0055;
+            color: #fff;
+            font-size: 1.7rem;
+            letter-spacing: 2px;
+        }
+
+        h3 {
+            background: #ffbe0b;
+            color: #000;
+            border: 3px solid #000;
+            padding: 8px;
+            text-align: center;
+            margin-bottom: 15px;
+            box-shadow: 3px 3px 0px #000;
+        }
+
+        .screen { display: none; }
+        .screen.active { display: block; }
+
+        .btn {
+            display: block;
+            width: 85%;
+            margin: 15px auto;
+            padding: 16px 20px;
+            background: #ff0055;
+            color: #fff;
+            border: 4px solid #000;
+            box-shadow: 5px 5px 0px #000;
+            font-size: 1.3rem;
+            cursor: pointer;
+            text-align: center;
+            transition: transform 0.05s ease, box-shadow 0.05s ease;
+        }
+
+        .btn:hover { transform: translate(2px, 2px); box-shadow: 3px 3px 0px #000; }
+        .btn-blue { background: #3a86ff; }
+        .btn-green { background: #05668d; color: #fff; }
+        .btn-next { background: #fff; color: #000; border-color: #000; box-shadow: 4px 4px 0px #000; font-size: 1.1rem; }
+
+        .safety-banner {
+            background: #ffbe0b; border: 3px solid #000; padding: 10px; font-size: 0.95rem; text-align: center; margin-bottom: 15px; box-shadow: 4px 4px 0px #000;
+        }
+
+        .stage {
+            height: 280px; border: 5px solid #000; background: #f8f9fa;
+            background-image: linear-gradient(#eee 1px, transparent 1px), linear-gradient(90deg, #eee 1px, transparent 1px);
+            background-size: 20px 20px; position: relative; margin-bottom: 20px; display: flex; justify-content: space-around; align-items: flex-end; padding-bottom: 15px;
+        }
+
+        .manzaishi {
+            width: 140px; height: 160px; background: #333; border: 4px solid #000; border-radius: 4px 4px 0 0; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; font-size: 1.1rem; z-index: 2;
+        }
+        .manzaishi.boke { background: #ff5500; color: #fff; }
+        .manzaishi.tsukkomi { background: #00bbf9; color: #000; }
+        .manzaishi.active-speaker { border-color: #ff0055; box-shadow: 0 0 18px #ff0055; }
+        
+        .center-mic {
+            width: 14px; height: 120px; background: #aaa; border: 4px solid #000; position: absolute; left: calc(50% - 7px); bottom: 0; z-index: 5;
+        }
+        .center-mic::before {
+            content: ''; position: absolute; top: -14px; left: -5px; width: 16px; height: 16px; background: #fff; border: 4px solid #000; border-radius: 50%;
+        }
+
+        .bubble-container { position: absolute; top: 12px; width: 92%; left: 4%; z-index: 10; }
+        .bubble { background: #fff; border: 4px solid #000; padding: 12px; min-height: 85px; font-size: 1.15rem; box-shadow: 5px 5px 0px rgba(0,0,0,0.15); line-height: 1.4; }
+        .speaker-tag { display: inline-block; background: #000; color: #fff; padding: 2px 8px; font-size: 0.85rem; margin-bottom: 4px; }
+
+        .affordance-panel { display: flex; gap: 8px; margin-bottom: 10px; justify-content: center; flex-wrap: wrap; }
+        .hint-chip { background: #eef1f6; border: 2px solid #000; padding: 4px 10px; font-size: 0.85rem; cursor: pointer; }
+        .hint-chip:hover { background: #ffbe0b; }
+
+        .control-panel { border: 4px solid #000; padding: 15px; background: #fff; box-shadow: 5px 5px 0px #000; min-height: 140px; }
+        .input-label { font-size: 0.95rem; color: #ff0055; margin-bottom: 6px; background: #ffe6ed; padding: 6px; border-left: 5px solid #ff0055; }
+        .user-textarea { width: 100%; height: 55px; border: 3px solid #000; padding: 10px; font-size: 1.15rem; resize: none; background: #fffdf2; }
+        .status-bar { text-align: left; font-size: 0.95rem; margin-bottom: 6px; color: #000; border-bottom: 2px solid #000; padding-bottom: 4px; display: flex; justify-content: space-between; }
+
+        /* リザルト画面・トップ型の動的解説ボックス */
+        .top-explain-box {
+            background: #fffdf0;
+            border: 4px solid #000;
+            padding: 15px;
+            margin: 15px auto;
+            width: 85%;
+            box-shadow: 5px 5px 0px #000;
+            text-align: left;
+        }
+        .top-explain-title {
+            background: #000;
+            color: #fff;
+            display: inline-block;
+            padding: 3px 10px;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+
+        .chart-row { margin: 10px 0; }
+        .chart-label { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 0.9rem; }
+        .chart-bar-bg { width: 100%; background: #eee; border: 3px solid #000; height: 18px; }
+        .chart-bar-fill { height: 100%; background: #ff5500; width: 0%; transition: width 1s ease-out; }
+        
+        .review-box { background: #fcfcfc; border: 4px solid #000; padding: 15px; margin-top: 15px; }
+        .review-item { margin-bottom: 15px; border: 3px solid #000; padding: 12px; background: #fff; box-shadow: 4px 4px 0px #000; }
+        .comparison-grid { display: flex; justify-content: space-between; margin-top: 8px; gap: 10px; }
+        .card-user { width: 50%; background: #ffe6ed; border: 2px solid #000; padding: 8px; }
+        .card-honke { width: 50%; background: #e3f2fd; border: 2px solid #000; padding: 8px; }
+        .type-badge { display: inline-block; background: #000; color: #fff; padding: 2px 6px; font-size: 0.75rem; margin-top: 4px; }
+
+        /* ── 難易度選択画面 ── */
+        .difficulty-grid { display: flex; gap: 16px; margin: 20px 0; }
+        .difficulty-card {
+            flex: 1; border: 5px solid #000; padding: 20px 15px; cursor: pointer;
+            box-shadow: 7px 7px 0px #000; text-align: center; transition: transform 0.05s, box-shadow 0.05s;
+        }
+        .difficulty-card:hover { transform: translate(3px, 3px); box-shadow: 4px 4px 0px #000; }
+        .difficulty-card.beginner { background: #3a86ff; color: #fff; }
+        .difficulty-card.advanced { background: #ff0055; color: #fff; }
+        .difficulty-card .d-title { font-size: 1.6rem; margin-bottom: 8px; }
+        .difficulty-card .d-desc { font-size: 0.9rem; line-height: 1.5; }
+        .difficulty-badge {
+            display: inline-block; padding: 2px 10px; border: 3px solid #000;
+            font-size: 0.85rem; margin-left: 8px;
+        }
+        .difficulty-badge.beginner { background: #3a86ff; color: #fff; }
+        .difficulty-badge.advanced { background: #ff0055; color: #fff; }
+
+        /* ── 初級：型選択カードグリッド ── */
+        .type-select-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;
+        }
+        .type-select-card {
+            border: 3px solid #000; padding: 12px 14px; cursor: pointer;
+            background: #fff; box-shadow: 4px 4px 0px #000;
+            transition: transform 0.05s, box-shadow 0.05s;
+            text-align: center; display: flex; align-items: center; justify-content: center;
+            min-height: 56px;
+        }
+        .type-select-card:hover { background: #ffbe0b; transform: translate(2px, 2px); box-shadow: 2px 2px 0px #000; }
+        .type-select-card.selected { background: #ff0055; color: #fff; box-shadow: 2px 2px 0px #000; transform: translate(2px, 2px); }
+        .type-select-card .tsc-sample { font-size: 0.95rem; line-height: 1.4; }
+
+        /* ── ターン間フィードバックオーバーレイ ── */
+        #turn-feedback {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.75); z-index: 9999;
+            justify-content: center; align-items: center; flex-direction: column;
+        }
+        #turn-feedback.show { display: flex; }
+        .feedback-badge {
+            background: #ffbe0b; border: 6px solid #000; padding: 20px 40px;
+            font-size: 1.8rem; box-shadow: 10px 10px 0px #000;
+            text-align: center; animation: pop 0.2s ease-out;
+        }
+        .feedback-sub { color: #fff; font-size: 0.95rem; margin-top: 12px; }
+        @keyframes pop { from { transform: scale(0.6); } to { transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 1. スタート画面 -->
+    <div id="screen-start" class="screen active">
+        <h1>AI漫才構造診断<br>～ダウンタウン「誘拐」～</h1>
+        <p style="text-align:center; margin: 20px 0; line-height: 1.6; font-size: 1.05rem;">
+            「どーもー、よろしくお願いしますー」の一文目から完全に体験！<br>
+            あなたの会話の「型」を、本家ダウンタウンと対比して可視化します。
+        </p>
+        <h3>役割を選択してください</h3>
+        <button class="btn btn-blue" onclick="goToDifficulty('tsukkomi')">ツッコミ担当（浜田役になって松本に突っ込む）</button>
+        <button class="btn btn-green" onclick="goToDifficulty('boke')">ボケ担当（松本役になって浜田をスカす）</button>
+    </div>
+
+    <!-- 1.5. 難易度選択画面 -->
+    <div id="screen-difficulty" class="screen">
+        <h1>難易度を選んでください</h1>
+        <p style="text-align:center; margin: 10px 0 5px; font-size:1rem;">どちらでも「正解」はありません。自分の型を知ることが目的です。</p>
+        <div class="difficulty-grid">
+            <div class="difficulty-card beginner" onclick="startGame('beginner')">
+                <div class="d-title">🟦 初級</div>
+                <div class="d-desc">
+                    各ターンで<b>型のカードを選ぶ</b>だけ。<br>
+                    ツッコミ（ボケ）の全種類が選択肢として並びます。<br><br>
+                    どんな「型」があるかを知りながら体験したい方に。
+                </div>
+            </div>
+            <div class="difficulty-card advanced" onclick="startGame('advanced')">
+                <div class="d-title">🟥 上級</div>
+                <div class="d-desc">
+                    テキスト入力のみ。<b>自分の言葉だけ</b>で返す。<br>
+                    AIが発話の内容を分析して型を判定します。<br><br>
+                    本当の自分の傾向を測りたい方に。
+                </div>
+            </div>
+        </div>
+        <button class="btn" style="background:#333; width:50%; font-size:0.95rem;" onclick="backToStart()">← 役割選択に戻る</button>
+    </div>
+
+    <!-- 2. ゲームメイン画面 -->
+    <div id="screen-game" class="screen">
+        <div class="safety-banner">
+            ⚠️ <b>心理的セーフティ警告:</b> このゲームに「正解」はありません！沈黙も立派な選択です。
+        </div>
+
+        <div class="status-bar">
+            <span>📖 文脈: <span id="progress-text">導入雑談</span>
+                <span id="difficulty-badge" class="difficulty-badge"></span>
+            </span>
+            <span>📊 収集データ数: <span id="collected-samples">0</span> / 8 サンプル</span>
+        </div>
+        <div class="stage">
+            <div class="manzaishi boke" id="char-left">松本役</div>
+            <div class="center-mic"></div>
+            <div class="manzaishi tsukkomi" id="char-right">浜田役</div>
+            
+            <div class="bubble-container">
+                <div class="bubble">
+                    <span class="speaker-tag" id="bubble-speaker">話者</span>
+                    <div id="bubble-content">漫才台本</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <div id="panel-chat" style="display: none;">
+                <button class="btn btn-next" onclick="nextStep()">会話の流れを読み進める ＞</button>
+            </div>
+            <div id="panel-input" style="display: none;">
+                <div class="input-label" id="input-guide">ガイド</div>
+
+                <!-- 初級：型選択カード（difficulty === 'beginner'のときだけ表示） -->
+                <div id="panel-beginner" style="display:none;">
+                    <p style="font-size:0.8rem; color:#444; margin:4px 0 6px; text-align:center;">👇 あなたが使いたい「型」を選んでください</p>
+                    <div class="type-select-grid" id="type-select-grid"></div>
+                </div>
+
+                <!-- 上級：テキスト入力（difficulty === 'advanced'のときだけ表示） -->
+                <div id="panel-advanced" style="display:none;">
+                    <textarea class="user-textarea" id="user-input" placeholder="あなたの言葉を入力（空欄のまま決定すると沈黙になります）..." oninput="userClickedSilenceHint = false;"></textarea>
+                    <div id="panel-hints-container" style="display:none; margin-top:8px;">
+                        <p style="margin: 0 0 5px 0; font-size: 0.8rem; color:#666; text-align:center;">💡 <b>思考の引き出し（アフォーダンスチップ）:</b> クリックで自動入力</p>
+                        <div class="affordance-panel" id="dynamic-hints"></div>
+                    </div>
+                    <button class="btn" style="margin: 8px auto 0 auto; width:100%; background:#00bbf9; color:#000;" onclick="submitTurn()">舞台で発話する（確定）</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ターン間フィードバックオーバーレイ：選択後に型名＋特徴を開示 -->
+    <div id="turn-feedback">
+        <div class="feedback-badge">
+            <div style="font-size:0.85rem; margin-bottom:4px; color:#555;">あなたが使った型：</div>
+            <div id="feedback-type-name" style="font-size:1.9rem; margin-bottom:10px;">○○型</div>
+            <div id="feedback-type-desc" style="font-size:0.85rem; color:#333; font-weight:normal; line-height:1.5; max-width:340px; margin:0 auto; border-top:2px solid #000; padding-top:8px;">特徴説明</div>
+        </div>
+        <div class="feedback-sub">次のターンへ進みます…</div>
+    </div>
+
+    <!-- 3. リザルト画面 -->
+    <div id="screen-result" class="screen">
+        <h1>診断完了：本家（ダウンタウン）構造対比シート</h1>
+        <p style="text-align: center; font-size: 1.15rem;">
+            あなたの放った言葉から検出された、主たる言語操作の「型」：<br>
+            <span id="top-type" style="font-size: 1.6rem; color:#fff; background:#ff0055; padding:4px 15px; border:4px solid #000; display:inline-block; margin-top:8px;">分析完了</span>
+        </p>
+        
+        <!-- 動的型解説ボックスの挿入位置（赤丸の下） -->
+        <div class="top-explain-box" id="top-type-explainer-zone">
+            <div class="top-explain-title">📊 検出された型の学術定義・本家例題</div>
+            <div id="top-type-definition" style="font-size:0.95rem; line-height:1.5; margin-bottom:8px;">説明ロード中...</div>
+            <div id="top-type-example" style="font-size:0.95rem; line-height:1.5; color:#05668d; background:#e3f2fd; padding:8px; border-left:4px solid #3a86ff;">例題ロード中...</div>
+        </div>
+
+        <h3>あなたの検出型出現比率</h3>
+        <div id="metrics-chart"></div>
+
+        <h3>🚨 本家（ダウンタウン）セリフ × あなたの言葉 完全構造対比</h3>
+        <div class="review-box" id="turn-reviews"></div>
+
+        <h3>学術分類リファレンス（安部達雄の研究定義）</h3>
+        <div id="reference-explainer" style="font-size:0.85rem; background:#fffdf0; border:4px solid #000; padding:12px; max-height:180px; overflow-y:scroll; line-height:1.5;"></div>
+
+        <button class="btn btn-blue" onclick="resetGame()" style="background:#000;">タイトルへ戻る</button>
+
+        <!-- 【修正3】運営者向け：来場者には積極的に見せる必要はないが、データ回収のために結果画面に置いておく -->
+        <div style="text-align:center; margin-top:20px; padding-top:15px; border-top:2px dashed #999;">
+            <p style="font-size:0.8rem; color:#666; margin-bottom:6px;">
+                運営者用：これまでに蓄積されたセッション数 <span id="session-count">0</span> 件
+            </p>
+            <button class="btn btn-next" onclick="exportSessions()" style="width:auto; padding:8px 16px; font-size:0.85rem; display:inline-block;">📊 蓄積データをエクスポート（JSON）</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 学術定義のデータベース
+    const academicDatabase = {
+        tsukkomi: {
+            '① 否定型': {
+                def: "【注意喚起：情報非付加型】『うるさい！』『違うわ！』など、あらかじめ形式化・記号化された強い拒絶の表現を用いて相手の会話を制止、または遮断する最も直截的な修復操作です[cite: 1, 2]。",
+                ex: "<b>本家の例題（第5幕）:</b> 松本の身代金要求のガチャ切りに対して ➔ <b>「切るなボケ！なんで要求だけ言って切んねん！」</b>[cite: 2]"
+            },
+            '② オウム返し型': {
+                def: "【注意喚起：情報非付加型】相手が放ったおかしなボケのキーワードをそのまま反復（リフレイン）して拡声することにより、そこに含まれる不調整や不調和を観客に対して際立たせる操作です[cite: 1, 2]。",
+                ex: "<b>本家の例題（第7幕）:</b> 松本の勝手な値下げ要求に対して ➔ <b>「400万ですね？」</b>[cite: 2]"
+            },
+            '③ 沈黙型': {
+                def: "【注意喚起：情報非付加型】あえてツッコミの言葉を発せず、無言の「間（ま）」を作ることで、直前のボケが持っている異常性や不整合性を空気感として浮き彫りにする、引き算の調和修復操作です[cite: 1, 2]。",
+                ex: "<b>本家の例題（共通）:</b> 松本が受話器の向こうで『もしもし？』と不穏なタメを作った際に、あえて言葉を挟まずに次の出方を待つ無言の間[cite: 2]。"
+            },
+            '④ 訂正型': {
+                def: "【内容追求：情報付加型】エラーを含んだボケに対し、本来その文脈や社会常識としてあるべき『正しい事実・正論（概念A）』を明確に提示し、おかしな世界観を正しい軌道へ引き戻す論理的アプローチです[cite: 1, 2]。",
+                ex: "<b>本家の例題（第2幕）:</b> 朝親が預けていったという託児ボケに対して ➔ <b>「普通に預けとるやないかい！」</b>[cite: 2]"
+            },
+            '⑤ 意味指摘型': {
+                def: "【内容追求：情報付加型】相手の異常なボケの設定を一度そのまま受理したと仮定し、『だとしたら、こういうおかしなことになるぞ』とその論理を演繹的に拡張・進展させて矛盾を暴き出す高度なツッコミです[cite: 1, 2]。",
+                ex: "<b>本家の例題（第6幕）:</b> 二丁目とイスタンブールの中間が電話ボックスという歪んだ縮尺に対して ➔ <b>「世界狭すぎるわ！」</b>[cite: 2]"
+            },
+            '⑥ 比喩型': {
+                def: "【内容追求：情報付加型】ボケによって発生した奇妙な状況を、比喩原理（マッピング）を働かせることで『まるで〇〇じゃないんだから』と全く別の極端な類似概念に見立てて表現する、ユーモア付加型の操作です[cite: 1, 2]。",
+                ex: "<b>本家の例題（第2幕）:</b> 親が朝連れていったというボケの状況を見立てて ➔ <b>「託児所かおい！」</b>[cite: 2]"
+            },
+            '⑦ 否定的感想型': {
+                def: "【内容追求：情報付加型】エラーの事実を論理的に訂正するのではなく、観客の感情を代弁するように、相手の常識のなさ、不気味さ、または人間性そのものを主観的な感想（非難・困惑）として伝える情緒的アプローチです[cite: 1, 2]。",
+                ex: "<b>本家の例題（第1幕）:</b> 犯人なのに自分の子供の学年をマウンティングしてきた松本に ➔ <b>「なんやねん。お前のとこ何年生いても知らんがなそんなん。聞きたないやん」</b>[cite: 2]"
+            }
+        },
+        boke: {
+            '① 単独型': {
+                def: "【安部(2005a)の定義】ひとつの前提（マエフリ）に対して、それに対比されるおかしなズレ（不調和・概念B）を正確に1個だけ配置して笑いを発生させる、すべてのボケの最小基本構造です[cite: 1, 2]。",
+                ex: "<b>本家の例題（第1幕）:</b> 誘拐の標的を確認するフリの直後に ➔ <b>「うちには6年生がおんねん。」</b>[cite: 2]"
+            },
+            '② 列挙型': {
+                def: "【安部(2005a)の定義】ある1つの共通した状況や条件の下で、おかしな要素や狂った概念を複数個並列に提示し、畳み掛けることによっておかしみの密度とボリュームを集中的に増幅させる構造です[cite: 1, 2]。",
+                ex: "<b>本家の例題（第5幕）:</b> カバンの色の指定で ➔ <b>「緑のカバンに500万入れて、白の紙で黄色のカバンいうて書いて、赤のカバン言いながら置いてくれたら、おれ黒のカバンいうて取りに行くわ」</b>[cite: 2]"
+            },
+            '③ 連鎖型': {
+                def: "【安部(2005a)の定義】ひとつ前に放ったボケの発話内容やその残響が、そのまま次のボケを引き出すための『新たなマエフリ』として機能し、文脈がドミノ倒しのように数珠繋ぎに展開していく結合構造です[cite: 1, 2]。",
+                ex: "<b>本家の例題（第3幕）:</b> ツッコミの反論を逆手にとって反省の方向を歪める ➔ <b>「次からはもっと電話でいきなり身代金とるって言うわ！」</b>[cite: 2]"
+            },
+            '④ 点在型': {
+                def: "【安部(2005a)の定義】漫才のテキスト中において、一度出現した印象的なボケ要素やキーワードを、一定の距離（会話の間隔）をあけた後に再度再帰的に登場させる、いわゆる『天丼』と呼ばれる回帰的構造です[cite: 1, 2]。",
+                ex: "<b>本家の例題（終盤）:</b> 中盤に一度出たワードを最後の移動先として再びかぶせる ➔ <b>「イスタンブールやないかい。とりあえずイスタンブール行きたいねん」</b>[cite: 2]"
+            }
+        }
+    };
+
+    const masterScenarios = {
+        tsukkomi: [
+            { type: "chat", speaker: "松本(AI)", text: "どーもー。よろしくお願いしますー。世の中の方が怖いですよ。人間が1番怖いねん。", progress: "オープニング" },
+            { type: "chat", speaker: "浜田(YOU)", text: "なんで？", progress: "オープニング" },
+            { type: "chat", speaker: "松本(AI)", text: "物騒な事件いっぱいあるやんか。", progress: "世相のフリ" },
+            { type: "chat", speaker: "浜田(YOU)", text: "まあね。今でもそうやろうけどね。", progress: "世相のフリ" },
+            { type: "chat", speaker: "松本(AI)", text: "せやろ。小ちゃい子なんか、あんまウロウロしてたら、すぐね、誰か連れていかれたりとかね。", progress: "指針の提示" },
+            { type: "chat", speaker: "浜田(YOU)", text: "ああ、誘拐とかね。あれタチ悪いでしょ。こんな小ちゃいやつ連れていくんですもん。勝手に。ほんで後で電話してきよんねんあれ。「身代金よこせ」とかなんとか言ってね。", progress: "フリの完成" },
+            { type: "chat", speaker: "松本(AI)", text: "『もしもし』", progress: "なりきり突入" },
+            { type: "chat", speaker: "浜田(YOU)", text: "『はい』", progress: "なりきり突入" },
+            { type: "chat", speaker: "松本(AI)", text: "『お前のとこに小学校2年生の息子おるやろ？』", progress: "標的確認" },
+            { type: "chat", speaker: "浜田(YOU)", text: "『いますけど』", progress: "標的確認" },
+            { type: "chat", speaker: "松本(AI)", text: "『うちには6年生がおんねん。』", progress: "【介入1】学年の提示" },
+            { 
+                type: "input", speaker: "松本(AI)", text: "『うちには6年生がおんねん。』", 
+                guide: "【1/8】犯人なのに自分の子供の学年をアピールする意味不明な裏切りにツッコミを！", 
+                hints: ["知らんがなそんなん！", "先輩風吹かすな！", "お前の家の事情はええねん！", "（無言で次の出方を伺う）"],
+                honke: "「なんやねん。お前のとこ何年生いても知らんがなそんなん。聞きたないやん」", honkeType: "⑦ 否定的感想型" 
+            },
+            { type: "chat", speaker: "松本(AI)", text: "『（気を取り直して）もしもし。お前とこの息子な、オレとこで預かってんねん……驚くことあらへん、あんたが朝預けてってん。』", progress: "【介入2】託児所エラー" },
+            { 
+                type: "input", speaker: "松本(AI)", text: "『オレとこで預かってんねん……驚くことあらへん、あんたが朝預けてってん。』", 
+                guide: "【2/8】誘拐したと言いつつ、親が朝普通に預けていったという平和すぎる矛盾にツッコミを！", 
+                hints: ["託児所かおい！", "普通に預けとるやないかい！", "近所のおばはんか！", "（あえて何も言わず泳がせる）"],
+                honke: "「なんでやねんお前。近所のおばはんやないんやから。」", honkeType: "⑥ 比喩型" 
+            },
+            { type: "chat", speaker: "松本(AI)", text: "『お前がそう言うから、次からはもっと電話でいきなり身代金とるって言うわ！』", progress: "【介入3】過剰な反省" },
+            { 
+                type: "input", speaker: "松本(AI)", text: "『次からはもっと電話でいきなり身代金とるって言うわ！』", 
+                guide: "【3/8】ツッコミを受けて、次からの誘拐手法をストレートにしすぎようとする過剰反省に一言！", 
+                hints: ["ストレートすぎるじゃろ！", "情緒もへったくれもないわ！", "強盗のやり方やがな！", "（沈黙を通す）"],
+                honke: "「ストレートすぎるじゃろが！情緒もへったくれもないわ！」", honkeType: "⑦ 否定的感想型" 
+            },
+            { type: "chat", speaker: "松本(AI)", text: "『ほな、じわじわ言うわ。実は…お宅の息子さんをな……フフフフフ。』", progress: "【介入4】不気味なタメ" },
+            { 
+                type: "input", speaker: "松本(AI)", text: "『実は…お宅の息子さんをな……フフフフフ。』", 
+                guide: "【4/8】「じわじわ言う」という意味を履き違えて、ただただ不気味にためる犯人にツッコミを！", 
+                hints: ["不気味やなおい！", "そんなじわじわいらんねん！", "早く本題言えや！", "（無言の抵抗）"],
+                honke: "「不気味やなおい！そんなじわじわいらんねん！」", honkeType: "⑦ 否定的感想型" 
+            },
+            { type: "chat", speaker: "松本(AI)", text: "『あ、もしもし？今から身代金とるで。じゃあな！（プツッ、ツーツー）』", progress: "【介入5】突然の切断" },
+            { 
+                type: "input", speaker: "松本(AI)", text: "『今から身代金とるで。じゃあな！（電話を切る）』", 
+                guide: "【5/8】要求を口にした直後、こちらの返事も聞かずに一方的にガチャ切りした犯人に一言！", 
+                hints: ["切るなボケ！", "なんで要求だけ言って切んねん！", "どこに持って行けばええねん！", "（切れた受話器を見つめて沈黙）"],
+                honke: "「切るなボケ！なんで要求だけ言って切んねん！」", honkeType: "① 否定型" 
+            },
+            { type: "chat", speaker: "松本(AI)", text: "『（かけ直してきて）お前がパッと行けるようなとこ言えよ。二丁目の松本さんちからイスタンブールの中間ぐらい。あそこにある三丁目の電話ボックス。あれがちょうどウチとイスタンブールの中間にあたる。』", progress: "【介入6】歪んだ地図" },
+            { 
+                type: "input", speaker: "松本(AI)", text: "『三丁目の電話ボックス。あれがちょうどウチとイスタンブールの中間にあたる。』", 
+                guide: "【6/8】日本国内の二丁目とトルコの中間が「三丁目の電話ボックス」という狂った縮尺に！", 
+                hints: ["そんなわけあるか！", "どんだけ歪んだ地図やねん！", "世界狭すぎるわ！", "（絶句して何も言えない）"],
+                honke: "「そんなわけあるか！どんだけ歪んだ地図やねん！世界狭すぎるわ！」", honkeType: "⑤ 意味指摘型" 
+            },
+            { type: "chat", speaker: "松本(AI)", text: "『おう、あそこに持ってこい。500万や。……あ、ごめん。ちょっと高かったかなあ？ 400？』", progress: "【介入7】勝手な値下げ" },
+            { 
+                type: "input", speaker: "松本(AI)", text: "『500万や。……あ、ごめん。ちょっと高かったかなあ？ 400？』", 
+                guide: "【7/8】こちらの懐事情を勝手に心配して、交渉もしていないのに勝手に身代金を値下げする犯人に！", 
+                hints: ["下げるな！", "なんで犯人側が弱気になってんねん！", "値切ってへんわ！", "（呆れて物も言えない）"],
+                honke: "「下げるな！なんで犯人側が弱気になって値切ってきとんねん！」", honkeType: "④ 訂正型" 
+            },
+            { type: "chat", speaker: "松本(AI)", text: "『400無理？無理やろ？そんな急に言われたってな。今日日、銀行も閉まってるしな。じゃあ200、200万も……もうええわ！』", progress: "【介入8】勝手な諦め" },
+            { 
+                type: "input", speaker: "松本(AI)", text: "『今日日、銀行も閉まってるしな。じゃあ200万も……もうええわ！』", 
+                guide: "【8/8】こちらの都合を過剰に気遣った結果、面倒くさくなって勝手に誘拐を諦める犯人に最後のツッコミを！", 
+                hints: ["なんで犯人側が逆ギレしてんねん！", "お前が持っていけ言うたんやろ！", "もうええわ！", "（最後まで沈黙を貫く）"],
+                honke: "「なんで犯人側が気遣って勝手に逆ギレして諦めてんねん！もうええわ！」", honkeType: "⑤ 意味指摘型" 
+            }
+        ],
+        boke: [
+            { type: "chat", speaker: "浜田(AI)", text: "人間が一番怖い、物騒な誘拐事件とか多いって話やな。おい、俺の子供を誘拐したっていう設定で電話かけてこい！", progress: "オープニング" },
+            { type: "input", speaker: "あなた(YOU)", text: "（電話の第一声）", hints: ["もしもし、お前の息子預かってるぞ。ちなみにウチは6年生おんねん。", "もしもし。朝預けていった息子、ここで預かってるで。", ""], guide: "【1/8】最初の電話。学年マウンティングなどの【単独型ボケ】を仕掛けてください（空欄なら単独型になります）。", honke: "「お前のとこに小学校2年生の息子おるやろ？……うちには6年生がおんねん。」", honkeType: "① 単独型" },
+            { type: "chat", speaker: "浜田(AI)", text: "知らんがなそんなん！お前のとこの子供が何年生でもええねん！もっと誘拐犯らしいこと言え！", progress: "託児フリ" },
+            { type: "input", speaker: "あなた(YOU)", text: "（身代金のフリ）", hints: ["驚くことあらへん、あんたが朝預けてってん。", "次からはもっと電話でいきなり身代金とるって言うわ！", ""], guide: "【2/8】平和な預かり状況を伝えるなど、概念を並列に並べる【列挙型ボケ】を仕掛けてください（空欄なら単独型になります）。", honke: "「お前とこの息子な、オレとこで預かってんねん……驚くことあらへん、あんたが朝預けてってん。」", honkeType: "② 列挙型" },
+            { type: "chat", speaker: "浜田(AI)", text: "託児所かおい！普通に預けとるやないかい！おい、反省してじわじわ要求を言ってみろ！", progress: "タメのフリ" },
+            { type: "input", speaker: "あなた(YOU)", text: "（じわじわボケ）", hints: ["実は…お宅の息子さんをな……フフフフフ。", "（突然切る）今から身代金とるで、じゃあな！", ""], guide: "【3/8】前の託児所の文脈を少し引きずりながら不気味にためる【連鎖型ボケ】を仕掛けてください（空欄なら単独型になります）。", honke: "「次からはもっといきなり言うわ…いや、じわじわ言うわ。実は…お宅の息子さんをな……フフフ。」", honkeType: "③ 連鎖型" },
+            { type: "chat", speaker: "浜田(AI)", text: "不気味やなおい！タメ方がいやらしいねん！おい、要求をストレートに言え！", progress: "切断フリ" },
+            { type: "input", speaker: "あなた(YOU)", text: "（切断ボケ）", hints: ["今から身代金とるで。じゃあな！（プツッ）", "三丁目の電話ボックスに持ってこい！", ""], guide: "【4/8】要求を一瞬で終わらせて遮断する【単独型ボケ】を仕掛けてください（空欄なら単独型になります）。", honke: "「今から身代金とるで。じゃあな！（プツッ）」", honkeType: "① 単独型" },
+            { type: "chat", speaker: "浜田(AI)", text: "切るなボケ！なんで要求だけ言って切んねん！繋ぎなおして場所を指定しろ！", progress: "地理フリ" },
+            { type: "input", speaker: "あなた(YOU)", text: "（イスタンブールボケ）", hints: ["二丁目の松本さんちからイスタンブールの中間ぐらいにある、三丁目の電話ボックスや。", "あそこに持ってこい、500万。あ、やっぱり400？", ""], guide: "【5/8】とんでもない世界の縮尺を提示して畳み掛ける【列挙型ボケ】を仕掛けてください（空欄なら単独型になります）。", honke: "「お前がパッと行けるような、二丁目とイスタンブールのちょうど中間にあたる、三丁目の電話ボックスや。」", honkeType: "② 列挙型" },
+            { type: "chat", speaker: "浜田(AI)", text: "そんなわけあるか！どんだけ歪んだ地図やねん！世界狭すぎるわ！で、金額はいくらやねん！", progress: "金額フリ" },
+            { type: "input", speaker: "あなた(YOU)", text: "（金額ボケ）", hints: ["500万や。あ、ごめん、ちょっと高かったかなあ？400？", "今日日銀行閉まってるしな、200万？…もうええわ！", ""], guide: "【6/8】相手を気遣って勝手に金額を変動させる【単独型ボケ】を仕掛けてください（空欄なら単独型になります）。", honke: "「500万や。……あ、ごめん。ちょっと高かったかなあ？ 400？」", honkeType: "① 単独型" },
+            { type: "chat", speaker: "浜田(AI)", text: "下げるな！なんで犯人側が弱気になって値切ってきとんねん！もっと堂々と奪いにこい！", progress: "銀行フリ" },
+            { type: "input", speaker: "あなた(YOU)", text: "（銀行気遣いボケ）", hints: ["開いてるから200万持ってこい。あ、銀行も閉まってるしな。じゃあ200万も……もうええわ！", "小学校2年生と6年生の、ちょうど中間の4年生の身代金や。", ""], guide: "【7/8】銀行の営業時間を心配して文脈を繋げる【連鎖型ボケ】を仕掛けてください（空欄なら単独型になります）。", honke: "「そんな急に言われたってな、今日日銀行も閉まってるしな。じゃあ200万も…」", honkeType: "③ 連鎖型" },
+            { type: "chat", speaker: "浜田(AI)", text: "なんでこっちの都合を過剰に気遣うてんねん！優しすぎるわ！", progress: "オチフリ" },
+            { type: "input", speaker: "あなた(YOU)", text: "（諦め・天丼オチ）", hints: ["もうええわ！（逆ギレして諦める）", "もうええわ！イスタンブール行ってくるわ！", ""], guide: "【8/8】最初の要素を再活性化して回収する【点在型ボケ（天丼）】で落としてください（空欄なら単独型になります）。", honke: "「もうええわ！（逆ギレして諦める）」", honkeType: "④ 点在型" }
+        ]
+    };
+
+    let currentMode = ''; let currentDifficulty = ''; let currentStepIndex = 0; let inputSampleCount = 0; let userResponses = [];
+    let userClickedSilenceHint = false;
+    let preSelectedType = null; // 初級モードで選ばれた型を保持
+    let visitorSessions = [];
+
+    // 初級モード用の型選択カード定義
+    // sample → カードに表示する"文言"（型名は見せない）
+    // type   → 選択後のフィードバックで開示する型名
+    // desc   → 選択後のフィードバックで開示する特徴説明
+    const beginnerTypes = {
+        tsukkomi: [
+            { sample: '「ちがう！うるさいわ！」',           type: '① 否定型',      desc: '形式化した強い言葉で相手の発話を遮断する、最もシンプルな修復操作。' },
+            { sample: '（相手の言葉をそのまま繰り返す）',    type: '② オウム返し型', desc: '相手が言った言葉をリフレインすることで、そこに含まれる不調和を際立てる。' },
+            { sample: '……（無言・沈黙で返す）',             type: '③ 沈黙型',      desc: '何も言わず「間」を作ることで、直前のボケの異常性を空気感として浮き彫りにする。' },
+            { sample: '「普通そうちゃうやろ！正論を言う」',  type: '④ 訂正型',      desc: '本来あるべき正論・事実を提示して、おかしな世界観を正しい軌道に引き戻す。' },
+            { sample: '「だとしたら、どうなるんやねん！」',  type: '⑤ 意味指摘型',  desc: 'ボケを一度受け入れたと仮定して「だとしたら〇〇になるぞ」と論理を拡張し矛盾を暴く。' },
+            { sample: '「〇〇やないんだから！（見立て）」',  type: '⑥ 比喩型',      desc: '奇妙な状況を別の極端な概念に見立てて「まるで〇〇みたいやな」と返す。' },
+            { sample: '「なんなんお前……ほんまに」',          type: '⑦ 否定的感想型', desc: '論理ではなく、相手の人間性そのものへの困惑・非難を主観的な感想として伝える。' },
+        ],
+        boke: [
+            { sample: '（ひとつのズレた返答を置く）',         type: '① 単独型', desc: 'ひとつの前提に対し、おかしなズレを1個だけ配置する。すべてのボケの基本形。' },
+            { sample: '（A・B・C…と複数の狂った要素を畳み掛ける）', type: '② 列挙型', desc: '共通の状況のもとで、おかしな要素を複数並列に提示して密度を増幅させる。' },
+            { sample: '（前の話の流れに繋げたおかしな展開）',  type: '③ 連鎖型', desc: '前のボケが次のボケのマエフリになり、文脈がドミノ倒しに展開していく。' },
+            { sample: '（さっき出た言葉・要素をもう一度持ち出す）', type: '④ 点在型', desc: '一度発話されたボケを、間隔を置いて再度提示する。いわゆる「天丼」構造。' },
+        ]
+    };
+
+    function goToDifficulty(mode) {
+        currentMode = mode;
+        document.getElementById('screen-start').classList.remove('active');
+        document.getElementById('screen-difficulty').classList.add('active');
+    }
+
+    function backToStart() {
+        document.getElementById('screen-difficulty').classList.remove('active');
+        document.getElementById('screen-start').classList.add('active');
+    }
+
+    function startGame(difficulty) {
+        currentDifficulty = difficulty;
+        currentStepIndex = 0; inputSampleCount = 0; userResponses = [];
+        userClickedSilenceHint = false; preSelectedType = null;
+
+        document.getElementById('screen-difficulty').classList.remove('active');
+        document.getElementById('screen-game').classList.add('active');
+
+        // 難易度バッジを設定
+        const badge = document.getElementById('difficulty-badge');
+        badge.innerText = difficulty === 'beginner' ? '初級' : '上級';
+        badge.className = 'difficulty-badge ' + difficulty;
+
+        if (currentMode === 'tsukkomi') {
+            document.getElementById('char-left').innerText = "松本役(AI)";
+            document.getElementById('char-right').innerText = "浜田役(YOU)";
+        } else {
+            document.getElementById('char-left').innerText = "松本役(YOU)";
+            document.getElementById('char-right').innerText = "浜田役(AI)";
+        }
+        renderStep();
+    }
+
+    function renderStep() {
+        const scenario = masterScenarios[currentMode][currentStepIndex];
+        document.getElementById('bubble-speaker').innerText = scenario.speaker;
+        document.getElementById('bubble-content').innerText = scenario.text;
+        document.getElementById('progress-text').innerText = scenario.progress;
+        document.getElementById('collected-samples').innerText = inputSampleCount;
+
+        if (scenario.speaker.includes("松本") || (currentMode === 'boke' && scenario.type === 'chat')) {
+            document.getElementById('char-left').classList.add('active-speaker');
+            document.getElementById('char-right').classList.remove('active-speaker');
+        } else {
+            document.getElementById('char-right').classList.add('active-speaker');
+            document.getElementById('char-left').classList.remove('active-speaker');
+        }
+
+        if (scenario.type === "chat") {
+            document.getElementById('panel-chat').style.display = 'block';
+            document.getElementById('panel-input').style.display = 'none';
+        } else {
+            document.getElementById('panel-chat').style.display = 'none';
+            document.getElementById('panel-input').style.display = 'block';
+            document.getElementById('input-guide').innerText = scenario.guide;
+            preSelectedType = null;
+
+            if (currentDifficulty === 'beginner') {
+                // 初級：型選択カードを生成
+                document.getElementById('panel-beginner').style.display = 'block';
+                document.getElementById('panel-advanced').style.display = 'none';
+                const grid = document.getElementById('type-select-grid');
+                grid.innerHTML = '';
+                beginnerTypes[currentMode].forEach(t => {
+                    const card = document.createElement('div');
+                    card.className = 'type-select-card';
+                    // カードには「文言」だけ表示。型名は選択後のフィードバックで開示する。
+                    card.innerHTML = `<div class="tsc-sample">${t.sample}</div>`;
+                    card.onclick = function() {
+                        document.querySelectorAll('.type-select-card').forEach(c => c.classList.remove('selected'));
+                        card.classList.add('selected');
+                        preSelectedType = t.type;
+                        setTimeout(() => submitTurn(), 500);
+                    };
+                    grid.appendChild(card);
+                });
+            } else {
+                // 上級：テキスト入力＋ヒントチップ
+                document.getElementById('panel-beginner').style.display = 'none';
+                document.getElementById('panel-advanced').style.display = 'block';
+                document.getElementById('user-input').value = '';
+                userClickedSilenceHint = false;
+
+                if (scenario.hints && scenario.hints.length > 0) {
+                    document.getElementById('panel-hints-container').style.display = 'block';
+                    const hintsDiv = document.getElementById('dynamic-hints');
+                    hintsDiv.innerHTML = '';
+                    scenario.hints.forEach((hint, idx) => {
+                        if (hint !== "") {
+                            const chip = document.createElement('div');
+                            chip.className = 'hint-chip';
+                            chip.innerText = hint;
+                            const isSilenceSlot = (idx === scenario.hints.length - 1);
+                            chip.onclick = function() {
+                                document.getElementById('user-input').value = hint;
+                                userClickedSilenceHint = isSilenceSlot;
+                            };
+                            hintsDiv.appendChild(chip);
+                        }
+                    });
+                } else {
+                    document.getElementById('panel-hints-container').style.display = 'none';
+                }
+            }
+        }
+    }
+
+    function nextStep() {
+        currentStepIndex++;
+        if (currentStepIndex < masterScenarios[currentMode].length) { renderStep(); } else { showResult(); }
+    }
+
+    // 【修正1】ボケモードの判定を「ターン番号」ではなく「実際の入力内容」で行うためのヘルパー関数群。
+    // 形態素解析ではない簡易ヒューリスティックですが、最低限「何を書いたか」を見て判定が変わるようにする。
+    function extractKeywords(text) {
+        if (!text) return [];
+        return text.replace(/[。、！？「」『』\s\(\)（）]/g, ' ').split(' ').filter(w => w.length >= 2);
+    }
+
+    function detectBokeType(input, prevLineText, allResponses) {
+        const currentWords = extractKeywords(input);
+
+        // ④点在型（天丼）：過去の自分のターンで使った単語を、ここで再び持ち出しているか
+        const pastWords = allResponses.flatMap(r => extractKeywords(r.text));
+        if (allResponses.length > 0 && currentWords.some(w => pastWords.includes(w))) {
+            return '④ 点在型';
+        }
+
+        // ②列挙型：1ターンの中におかしな要素を複数並べているか（読点の数・文の長さで推定）
+        const tenCount = (input.match(/、/g) || []).length;
+        if (tenCount >= 2 || input.length >= 40) {
+            return '② 列挙型';
+        }
+
+        // ③連鎖型：直前の浜田(AI)のセリフに出てきた単語を引き継いで使っているか
+        const prevWords = extractKeywords(prevLineText);
+        if (currentWords.some(w => prevWords.includes(w))) {
+            return '③ 連鎖型';
+        }
+
+        // どれにも当てはまらなければ①単独型（最も基本的な構造）
+        return '① 単独型';
+    }
+
+    // ターン間フィードバック：型名＋特徴を2.5秒見せてから次へ進む
+    function showTurnFeedback(type, desc, callback) {
+        const overlay = document.getElementById('turn-feedback');
+        document.getElementById('feedback-type-name').innerText = type;
+        document.getElementById('feedback-type-desc').innerText = desc || '';
+        overlay.classList.add('show');
+        setTimeout(() => {
+            overlay.classList.remove('show');
+            callback();
+        }, 2500);
+    }
+
+    function submitTurn() {
+        let input = '';
+        let detectedType = '';
+        let detectedDesc = '';
+
+        if (currentDifficulty === 'beginner') {
+            if (!preSelectedType) return;
+            detectedType = preSelectedType;
+            // 選択された型の特徴説明をbeginnerTypesから引く
+            const found = beginnerTypes[currentMode].find(t => t.type === detectedType);
+            detectedDesc = found ? found.desc : '';
+            input = found ? found.sample : `【${detectedType}を選択】`;
+            preSelectedType = null;
+        } else {
+            input = document.getElementById('user-input').value.trim();
+
+            if (!input || input.length === 0 || userClickedSilenceHint) {
+                detectedType = (currentMode === 'tsukkomi') ? '③ 沈黙型' : '① 単独型';
+            } else {
+                if (currentMode === 'tsukkomi') {
+                    if (input.match(/(託児所|保育園|強盗|地図|歪ん|狭い|イスタンブール|おばはん)/)) detectedType = '⑥ 比喩型';
+                    else if (input.match(/(だとしたら|それじゃ|じゃあ|一緒|なるやん|なるわ|お兄ちゃん)/)) detectedType = '⑤ 意味指摘型';
+                    else if (input.match(/(知らん|学校|関係ない|事情|預け|銀行|犯人|正論)/)) detectedType = '④ 訂正型';
+                    else if (input.match(/(やかましい|うるさい|あほか|しばく|ちがう|やめろ|違う|切るな)/)) detectedType = '① 否定型';
+                    else if (input.match(/(6年生|預かってんねん|身代金|じわじわ|じゃあな|電話ボックス|500万|400|200)/)) detectedType = '② オウム返し型';
+                    else detectedType = '⑦ 否定的感想型';
+                } else {
+                    const prevChat = currentStepIndex > 0 ? masterScenarios[currentMode][currentStepIndex - 1].text : '';
+                    detectedType = detectBokeType(input, prevChat, userResponses);
+                }
+            }
+            // 上級モードでも型の説明を引いて表示する
+            const found = beginnerTypes[currentMode].find(t => t.type === detectedType);
+            detectedDesc = found ? found.desc : '';
+        }
+
+        const stepData = masterScenarios[currentMode][currentStepIndex];
+        userResponses.push({
+            milestone: inputSampleCount + 1,
+            text: input || "（沈黙）",
+            type: detectedType,
+            honke: stepData.honke,
+            honkeType: stepData.honkeType
+        });
+
+        inputSampleCount++;
+        currentStepIndex++;
+
+        showTurnFeedback(detectedType, detectedDesc, () => {
+            if (currentStepIndex < masterScenarios[currentMode].length) {
+                renderStep();
+            } else {
+                showResult();
+            }
+        });
+    }
+
+    function showResult() {
+        document.getElementById('screen-game').classList.remove('active');
+        document.getElementById('screen-result').classList.add('active');
+
+        const counts = {};
+        userResponses.forEach(r => { counts[r.type] = (counts[r.type] || 0) + 1; });
+
+        let topType = ''; let max = 0;
+        for (let key in counts) { if (counts[key] > max) { max = counts[key]; topType = key; } }
+        
+        // 1. トップの型をバッジに表示
+        document.getElementById('top-type').innerText = topType;
+
+        // 2. 【新機能】赤丸の下の領域へ、トップの型に応じた定義説明と例題を動的インジェクション
+        const modeDb = academicDatabase[currentMode];
+        if (modeDb && modeDb[topType]) {
+            document.getElementById('top-type-definition').innerHTML = modeDb[topType].def;
+            document.getElementById('top-type-example').innerHTML = modeDb[topType].ex;
+        } else {
+            document.getElementById('top-type-definition').innerText = "複数の型が同数で並びました。全体比率チャートを参照してください。";
+            document.getElementById('top-type-example').innerText = "特出された単一の例題はありません。";
+        }
+
+        // 下部リファレンス等の構築
+        const refTextTsukkomi = `
+            <b>【注意喚起：情報非付加型（安部, 2005b）】</b><br>
+            ・①否定型：『うるさい！』など形式化した発話で遮断する[cite: 1, 2]。<br>
+            ・②オウム返し型：ボケの発話をそのまま反復し、異変を際立たせる[cite: 1, 2]。<br>
+            ・③沈黙型：あえて間をあける（無言の圧力）[cite: 1, 2]。<br>
+            <b>【内容追求：情報付加型（安部, 2005b）】</b><br>
+            ・④訂正型：本来その文脈に来るべき正論（概念A）を明示して対比させる[cite: 1, 2]。<br>
+            ・⑤意味指摘型：ボケを一度肯定した際に生じる新味を『だとしたら～』型で暴走させる[cite: 1, 2]。<br>
+            ・⑥比喩型：比喩原理を働かせ『～みたいだ』『〇〇じゃないんだから』に見立てる[cite: 1, 2]。<br>
+            ・⑦否定的感想型：観客の気持ちを代弁し、発話者の人間性そのものを批判・非難する[cite: 1, 2]。
+        `;
+        const refTextBoke = `
+            <b>【ボケの現出型4種類（安部, 2005a）】</b><br>
+            ・①単独型：ひとつのフリに対してひとつのボケを返す基本形[cite: 1, 2]。<br>
+            ・②列挙型：ある共通条件の下で、おかしな概念Bを複数提示し、畳み掛けて増幅を図る[cite: 1, 2]。<br>
+            ・③連鎖型：先行するボケの発話がマエフリの機能を兼ね、次のボケを必然的に呼び出す連鎖[cite: 1, 2]。<br>
+            ・④点在型：一度発話されたボケが、テキスト中である程度の間隔をあけて再度提示される[cite: 1, 2]。
+        `;
+        document.getElementById('reference-explainer').innerHTML = (currentMode === 'tsukkomi') ? refTextTsukkomi : refTextBoke;
+
+        const chartContainer = document.getElementById('metrics-chart');
+        chartContainer.innerHTML = '';
+        const allTypes = (currentMode === 'tsukkomi') 
+            ? ['① 否定型', '② オウム返し型', '③ 沈黙型', '④ 訂正型', '⑤ 意味指摘型', '⑥ 比喩型', '⑦ 否定的感想型'] : ['① 単独型', '② 列挙型', '③ 連鎖型', '④ 点在型'];
+
+        allTypes.forEach(t => {
+            const count = counts[t] || 0; const percentage = (count / 8) * 100;
+            const row = document.createElement('div'); row.className = 'chart-row';
+            row.innerHTML = `
+                <div class="chart-label"><span>${t}</span><span>${count}回 (${percentage}%)</span></div>
+                <div class="chart-bar-bg"><div class="chart-bar-fill" style="width: ${percentage}%"></div></div>
+            `;
+            chartContainer.appendChild(row);
+        });
+
+        const reviewContainer = document.getElementById('turn-reviews');
+        reviewContainer.innerHTML = '';
+        userResponses.forEach((res) => {
+            const item = document.createElement('div');
+            item.className = 'review-item';
+            item.innerHTML = `
+                <div style="background:#000; color:#fff; padding:4px 10px; font-size:0.9rem;">📍 収集マイルストーン ${res.milestone}</div>
+                <div class="comparison-grid">
+                    <div class="card-user">
+                        <strong>あなたの言葉:</strong><br>「${res.text}」<br>
+                        <span class="type-badge" style="background:#ff0055;">あなたの型：${res.type}</span>
+                    </div>
+                    <div class="card-honke">
+                        <strong>本家（ダウンタウン）:</strong><br>${res.honke}<br>
+                        <span class="type-badge" style="background:#333; color:#fff;">本家の型：${res.honkeType}</span>
+                    </div>
+                </div>
+            `;
+            reviewContainer.appendChild(item);
+        });
+
+        // 【修正3】このセッションの結果を、ブラウザを閉じるまで保持される蓄積ログに追加する。
+        // resetGame()しても消えないので、複数の来場者を連続して体験させた分がここに溜まっていく。
+        visitorSessions.push({
+            sessionId: Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+            mode: currentMode,
+            difficulty: currentDifficulty,
+            timestamp: new Date().toISOString(),
+            topType: topType,
+            typeCounts: counts,
+            turns: userResponses.map(r => ({
+                milestone: r.milestone, text: r.text, type: r.type, honkeType: r.honkeType
+            }))
+        });
+        document.getElementById('session-count').innerText = visitorSessions.length;
+    }
+
+    function resetGame() {
+        document.getElementById('screen-result').classList.remove('active');
+        document.getElementById('screen-start').classList.add('active');
+    }
+
+    // 【修正3】蓄積したセッションをJSONファイルとしてダウンロードする。
+    // 今はメモリ上にしか保存されないため、ページをリロード/閉じると消える。
+    // 展示中はこまめにこのボタンでエクスポートしておくこと。
+    function exportSessions() {
+        if (visitorSessions.length === 0) {
+            alert('まだ保存されたセッションがありません。誰か一人プレイし終えると1件たまります。');
+            return;
+        }
+        const blob = new Blob([JSON.stringify(visitorSessions, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `manzai_sessions_${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+</script>
+</body>
+</html>
